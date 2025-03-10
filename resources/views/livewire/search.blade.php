@@ -10,6 +10,7 @@ use Intervention\Image\Geometry\Factories\CircleFactory;
 use Intervention\Image\Geometry\Factories\RectangleFactory;
 use App\Modifiers\MaskModifier;
 use Intervention\Image\Facades\Image;
+use Illuminate\Support\Facades\Http;
 
 new
 #[Title('DSWD ID Search')] 
@@ -17,141 +18,140 @@ new
 class extends Component {
     
     public $id_pic = null;
+    
+    public function mount()
+    {
+        // $login = Http::post('https://fpa-api-dev.dswd.gov.ph/api/v1/auth/tokens', [
+        //     'email' => 'plmpunzalan@dswd.gov.ph',
+        //     'password' => env('PBP_PASSWORD'),
+        // ]);
+    }
 
-    // public function mount()
-    // {
-    //     $image = Image::load(public_path('img/Front-ID.png'));
-    //     $image->watermark(
-    //         public_path('img/Picture1.jpg'),
-    //         AlignPosition::Center,
-    //         width: 300,
-    //         paddingY: -8,
-    //         paddingX: -320,
-    //     );
-
-    //     // Save to 'public/img-id/' directory
-    //     $savePath = public_path('img-id/watermarked.png');
-    //     $image->save($savePath);
-    // }
 
     // To update
     public function generateId()
-{
-    // Validate Base64 image
-    if (!$this->id_pic) {
-        dd("No image received!");
-    }
-
-    // Decode Base64 image safely
-    $base64Str = preg_replace('/^data:image\/\w+;base64,/', '', $this->id_pic);
-    $imageData = base64_decode($base64Str);
-    if (!$imageData) {
-        dd("Invalid Base64 image!");
-    }
-
-    // Define a temporary file path
-    $tempImagePath = storage_path('app/temp-id.png');
-    file_put_contents($tempImagePath, $imageData);
-
-    // Load the ID card template
-    $image = Image::make(public_path('img/Front-ID.png'));
-
-    // Process and resize profile picture
-    $img_pic = Image::make($tempImagePath)->resize(null, 250, function ($constraint) {
-        $constraint->aspectRatio();
-    });
-
-    // Apply border
-    $img_pic = $img_pic->resizeCanvas(
-        $img_pic->width() + 15,
-        $img_pic->height() + 15,
-        'center',
-        false,
-        '#293892'
-    );
-
-    // Apply rounded mask
-    $img_pic->mask(public_path('img/round.png'), true);
-
-    // Insert the profile picture
-    $image->insert($img_pic, 'center', -285, 10);
-
-    // Define text properties
-    $maxWidth = 1011;
-    $maxHeight = 639;
-    $fontPath = public_path('fonts/love_black.otf');
-    $baseFontSize = 36; // Default font size
-    $rightMargin = 50;
-    $lineSpacing = 5;
-
-    // Dynamic text data
-    $name = 'John Alexander De La Cruz Jr. Long Enough';
-    $address = '123 Barangay Street, Quezon City, Philippines';
-    $idNumber = 'ID No: 2024-00123';
-
-    function adjustFontSize($text, $maxWidth, $fontPath, $baseSize)
     {
-        $size = $baseSize;
-        do {
-            $box = imagettfbbox($size, 0, $fontPath, $text);
-            $textWidth = abs($box[2] - $box[0]);
-            if ($textWidth <= $maxWidth) {
-                return $size;
+        if (!$this->id_pic) {
+            dd("No image received!");
+        }
+
+        $base64Str = preg_replace('/^data:image\/\w+;base64,/', '', $this->id_pic);
+        $imageData = base64_decode($base64Str);
+        if (!$imageData) {
+            dd("Invalid Base64 image!");
+        }
+
+        $tempImagePath = storage_path('app/temp-id.png');
+        file_put_contents($tempImagePath, $imageData);
+
+        $image = Image::make(public_path('img/Front-ID.png'));
+
+        $img_pic = Image::make($tempImagePath)->resize(null, 250, function ($constraint) {
+            $constraint->aspectRatio();
+        });
+
+        $img_pic = $img_pic->resizeCanvas(
+            $img_pic->width() + 15,
+            $img_pic->height() + 15,
+            'center',
+            false,
+            '#293892'
+        );
+
+        $img_pic->mask(public_path('img/round.png'), true);
+
+        $image->insert($img_pic, 'center', -285, 10);
+
+        // Image dimensions
+        $imageWidth = $image->width();
+        $imageHeight = $image->height();
+        $rightMargin = 50;
+        $lineSpacing = 8;
+        $fontPath = public_path('fonts/love_black.otf');
+
+        // Example text
+        $name = 'Jose R. Park';
+        $address = 'Beneficiary';
+        $idNumber = 'ID No: 2024-00123';
+
+        $nameFontSize = 50;
+        $addressFontSize = 45;
+        $idFontSize = 32;
+
+        // Calculate max width for text (from right edge to middle)
+        $maxTextWidth = ($imageWidth / 2) + 250 - $rightMargin;
+
+        function wrapText($text, $maxWidth, $fontPath, $fontSize)
+        {
+            $words = explode(' ', $text);
+            $lines = [];
+            $currentLine = '';
+
+            foreach ($words as $word) {
+                $testLine = $currentLine ? $currentLine . ' ' . $word : $word;
+                $box = imagettfbbox($fontSize, 0, $fontPath, $testLine);
+                $textWidth = abs($box[2] - $box[0]);
+
+                if ($textWidth <= $maxWidth) {
+                    $currentLine = $testLine;
+                } else {
+                    $lines[] = $currentLine;
+                    $currentLine = $word;
+                }
             }
-            $size -= 2; // Reduce font size if too wide
-        } while ($size > 18); // Prevent font size from becoming too small
+            if ($currentLine) {
+                $lines[] = $currentLine;
+            }
 
-        return 18; // Minimum font size
+            return $lines;
+        }
+
+        function drawWrappedText($image, $text, $xRight, $startY, $fontPath, $fontSize, $color, $maxWidth, $lineSpacing)
+        {
+            $lines = wrapText($text, $maxWidth, $fontPath, $fontSize);
+            foreach ($lines as $line) {
+                $image->text($line, $xRight, $startY, function ($font) use ($fontPath, $fontSize, $color) {
+                    $font->file($fontPath);
+                    $font->size($fontSize);
+                    $font->color($color);
+                    $font->align('right');
+                });
+                $startY += $fontSize + $lineSpacing;
+            }
+            return $startY;
+        }
+
+        // Calculate total text block height for vertical centering
+        $nameLines = wrapText($name, $maxTextWidth, $fontPath, $nameFontSize);
+        $addressLines = wrapText($address, $maxTextWidth, $fontPath, $addressFontSize);
+        $idLines = wrapText($idNumber, $maxTextWidth, $fontPath, $idFontSize);
+
+        $totalHeight = (count($nameLines) * ($nameFontSize + $lineSpacing)) +
+                    (count($addressLines) * ($addressFontSize + $lineSpacing)) +
+                    (count($idLines) * ($idFontSize + $lineSpacing)) +
+                    20; // Extra spacing before ID number
+
+        // Remove extra line spacing from the last line of each block
+        $totalHeight -= $lineSpacing * 3; // Adjust for 3 text blocks
+
+        // Center vertically
+        $startY = ($imageHeight - $totalHeight) / 1.8;
+
+        // Right edge for text
+        $xRight = $imageWidth - $rightMargin;
+
+        // Draw text
+        $nextY = drawWrappedText($image, $name, $xRight, $startY, $fontPath, $nameFontSize, '#293892', $maxTextWidth, $lineSpacing);
+        $nextY = drawWrappedText($image, $address, $xRight, $nextY, $fontPath, $addressFontSize, '#000000', $maxTextWidth, $lineSpacing);
+        drawWrappedText($image, $idNumber, $xRight, $nextY + 20, $fontPath, $idFontSize, '#000000', $maxTextWidth, $lineSpacing);
+
+        $savePath = public_path('img-id/final-id.png');
+        $image->save($savePath);
+
+        if (file_exists($tempImagePath)) {
+            unlink($tempImagePath);
+        }
     }
-
-    // Adjust font sizes dynamically
-    $nameFontSize = adjustFontSize($name, $maxWidth - $rightMargin, $fontPath, $baseFontSize);
-    $addressFontSize = adjustFontSize($address, $maxWidth - $rightMargin, $fontPath, 28);
-    $idFontSize = adjustFontSize($idNumber, $maxWidth - $rightMargin, $fontPath, 32);
-
-    // Calculate vertical positioning
-    $startY = ($maxHeight / 2) - ($nameFontSize + $addressFontSize) / 2;
-
-    // Insert Name
-    $image->text($name, $maxWidth - $rightMargin, $startY, function ($font) use ($fontPath, $nameFontSize) {
-        $font->file($fontPath);
-        $font->size($nameFontSize);
-        $font->color('#000000');
-        $font->align('right');
-    });
-
-    $startY += $nameFontSize + $lineSpacing;
-
-    // Insert Address
-    $image->text($address, $maxWidth - $rightMargin, $startY, function ($font) use ($fontPath, $addressFontSize) {
-        $font->file($fontPath);
-        $font->size($addressFontSize);
-        $font->color('#000000');
-        $font->align('right');
-    });
-
-    $startY += $addressFontSize + $lineSpacing;
-
-    // Insert ID Number
-    $image->text($idNumber, $maxWidth - $rightMargin, $startY + 20, function ($font) use ($fontPath, $idFontSize) {
-        $font->file($fontPath);
-        $font->size($idFontSize);
-        $font->color('#FF0000');
-        $font->align('right');
-    });
-
-    // Save final ID card
-    $savePath = public_path('img-id/final-id.png');
-    $image->save($savePath);
-
-    // Clean up temporary file
-    if (file_exists($tempImagePath)) {
-        unlink($tempImagePath);
-    }
-
-    dd("ID Generated Successfully!", $savePath);
-}
-
 
 
 
@@ -198,12 +198,16 @@ class extends Component {
         captureButtonClick() {
             this.captureButton.disabled = true; // Disable button
 
+            // Disable clicks but allow movement
+            const preventClicks = (event) => event.stopPropagation();
+            document.addEventListener('click', preventClicks, true);
+
             let timeCapture = 3;
             this.countdownDisplay.textContent = timeCapture;
             this.countdownDisplay.classList.remove('hidden');
 
             const countdown = setInterval(() => {
-                if (timeCapture === 3) {
+                if (timeCapture === 1) {
                     clearInterval(countdown);
                     this.countdownDisplay.classList.add('hidden'); // Hide countdown before reaching 0
 
@@ -231,6 +235,7 @@ class extends Component {
 
                     // Re-enable button **after** the image is rendered
                     setTimeout(() => {
+                        document.removeEventListener('click', preventClicks, true);
                         this.captureButton.disabled = false;
                     }, 100); // Small delay to ensure UI updates properly
                 } else {
@@ -247,27 +252,33 @@ class extends Component {
             this.captureButton.classList.remove('hidden');
             this.resetButton.classList.add('hidden');
 
-            this.countdownDisplay.classList.add('hidden'); // Hide countdown
-            this.countdownDisplay.textContent = '3'; // Reset countdown text
+            this.countdownDisplay.classList.add('hidden');
+            this.countdownDisplay.textContent = '3';
+        },
+        closeButtonClick() {
+            this.resetButtonClick();
+            this.openCamera = false;
+            this.printId = false;
+            this.container = false;
         }
     }"
     x-effect="if (openCamera) startCamera(); else stopCamera();"
     class="justify-center flex w-full pt-24 pb-36"
     x-cloak
 >
-    <div class="w-full max-w-sm min-w-xl relative">
+    <div class="w-full max-w-xl relative px-5">
         <div class="text-center space-y-4">
-            <p class="text-neutral-800 font-medium text-4xl">DSWD ID Generation</p>
-            <p class="text-neutral-600 text-xl">Easily input your ID to proceed or register if you don’t have one, ensuring a seamless identification process.</p>
+            <p class="text-neutral-800 font-medium text-xl sm:text-4xl">DSWD ID Generation</p>
+            <p class="text-neutral-600 sm:text-xl">Easily input your ID to proceed or register if you don’t have one, ensuring a seamless identification process.</p>
         </div>
         <div class="relative mt-16">
             <input
-                class="bg-white w-full h-16 placeholder:text-slate-400 text-slate-700 border-3 border-blue-200 rounded-xl pl-3 pr-28 py-2 transition duration-300 ease focus:outline-none focus:border-blue-500 hover:border-blue-500 shadow-sm focus:shadow text-xl"
+                class="bg-white w-full h-16 placeholder:text-slate-400 text-slate-700 border-3 border-blue-200 rounded-xl pl-3 pr-28 py-2 transition duration-300 ease focus:outline-none focus:border-blue-500 hover:border-blue-500 shadow-sm focus:shadow sm:text-xl"
                 placeholder="Search your id here..." 
             />
             <button
                 x-on:click="container = true; openCamera = true;"
-                class="absolute h-14 top-1 right-1 flex items-center rounded-xl bg-slate-800 py-1 px-6 border border-transparent text-center text-xl text-white transition-all shadow-sm hover:shadow focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none cursor-pointer"
+                class="absolute h-14 top-1 right-1 flex items-center rounded-xl bg-slate-800 py-1 px-6 border border-transparent text-center sm:text-xl text-white transition-all shadow-sm hover:shadow focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none cursor-pointer"
                 type="button"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
@@ -286,16 +297,16 @@ class extends Component {
         x-show="container"
         class="absolute inset-0 min-h-screen w-full flex z-10 bg-gray-900/50 px-10 py-5 overflow-auto"
         x-cloak
-        wire:ignore
     >
         {{-- Camera --}}
         <div 
-            x-on:click.outside="openCamera = false; container = false;"
+            x-on:click.outside="closeButtonClick"
             class="h-auto m-auto w-full max-w-xl shadow rounded-2xl bg-gray-100 p-5 relative"
             x-show="openCamera"
             x-transition
+            wire:ignore
         >
-            <div class="absolute -right-2 -top-3 shadow bg-white rounded-full h-8 w-8 grid place-content-center cursor-pointer hover:bg-gray-100" x-on:click="openCamera = false; container = false;">
+            <div class="absolute -right-2 -top-3 shadow bg-white rounded-full h-8 w-8 grid place-content-center cursor-pointer hover:bg-gray-100" x-on:click="closeButtonClick">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6 text-red-600">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
@@ -313,8 +324,8 @@ class extends Component {
                         <span id="camera-countdown" style="text-shadow: 2px 2px 4px rgba(18, 143, 165, 0.8);"></span>
                     </div>
                     <video id="camera" class="rounded-xl h-72" autoplay></video>
-                    <div class=" hidden bg-gray-100 p-5 rounded-xl" id="capturedImageBorder">
-                        <img class="rounded-xl shadow h-72 hidden" id="capturedImage" />
+                    <div class=" hidden bg-gray-100 border border-neutral-400 p-5 rounded-xl" id="capturedImageBorder">
+                        <img class="rounded-xl shadow h-72 hidden " id="capturedImage" />
                     </div>
                 </div>
         
@@ -363,7 +374,7 @@ class extends Component {
             x-cloak
             x-show="printId"
             class="h-auto m-auto w-full max-w-4xl shadow rounded-2xl bg-gray-100 p-5 relative"
-            x-on:click.outside="printId = false; container = false;"
+            x-on:click.outside="closeButtonClick"
             x-transition
             x-data="{
                 printDiv() {
@@ -415,20 +426,20 @@ class extends Component {
             <div class="flex justify-center flex-wrap gap-6" id="printableArea" x-ref="printableArea">
                 <div>
                     <p class="mb-4 text-center font-semibold text-neutral-800">Front ID</p>
-                    <div class="h-52 w-full" id="id-card-front">
-                        <img src="{{ asset('img/Front-ID.png') }}" class="h-full w-full object-contain" alt="">
+                    <div class="h-72 w-full" id="id-card-front">
+                        <img src="{{ asset('img-id/final-id.png') }}?t={{ time() }}" class="h-full w-full object-contain" alt="">
                     </div>
                 </div>
         
                 <!-- Forces next section to print on a new page -->
-                <div class="page-break"></div>
+                {{-- <div class="page-break"></div>
         
                 <div>
                     <p class="mb-4 text-center font-semibold text-neutral-800">Back ID</p>
                     <div class="h-52 w-full" id="id-card-back">
                         <img src="{{ asset('img/Back-ID.png') }}" class="h-full w-full object-contain" alt="">
                     </div>
-                </div>
+                </div> --}}
             </div>
         
             <button 
