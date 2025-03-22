@@ -9,7 +9,7 @@ Volt::route('/', 'search')->name('home');
 Volt::route('/search', 'search')->name('search');
 
 // Signature Pad Routes
-Route::get('/tutorial', [SignatureController::class, 'index'])->name('signpad.index'); // Change this to /tutorial
+Route::get('/signature', [SignatureController::class, 'index'])->name('signpad.index');
 // Route::post('/save', [SignatureController::class, 'save'])->name('signpad.save');
 Route::post('/save', [SignatureController::class, 'saveSignature'])->name('signpad.save');
 // Route::delete('/delete/{id}', [SignatureController::class, 'delete'])->name('signpad.delete');
