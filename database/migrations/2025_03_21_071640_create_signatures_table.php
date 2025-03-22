@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('signatures', function (Blueprint $table) {
             $table->id();
-            $table->longText('sign_image');
+            $table->text('sign_image');
             $table->timestamps();
         });
     }
