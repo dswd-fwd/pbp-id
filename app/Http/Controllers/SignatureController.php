@@ -14,7 +14,7 @@ class SignatureController extends Controller
         return view('livewire.signature-pad', compact('signatures'));
     }
 
-    // Save to SQLite, MySQL, and public folder
+    // Save to SQLite, MySQL, and public folder (signatures folder)
     public function saveSignature(Request $request)
     {
         $request->validate(['sign_image' => 'required']);
@@ -53,7 +53,7 @@ class SignatureController extends Controller
         }
     }
 
-    // Delete the signature from both SQLite and MySQL
+    // Delete from both SQLite and MySQL 0_0
     public function delete($id)
     {
         try {
