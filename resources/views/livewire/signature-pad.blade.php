@@ -5,7 +5,9 @@
             height: 200px;
         }
 
-        #sigpad {
+        #sigpad canvas {
+            width: 100% !important;
+            height: 100%  !important;
             /* Fixed height */
             display: block;
             border-radius: 8px;
@@ -24,10 +26,11 @@
         <h1 class="text-2xl font-bold mb-6 text-gray-800">Signature Pad</h1>
 
         <!-- Signature Table -->
-        <div class="overflow-hidden rounded-xl shadow-lg border border-gray-200 bg-white w-full max-w-4xl mx-auto">
+        <div class="overflow-hidden rounded-xl shadow-lg border border-gray-200 bg-white">
             <table class="table-auto w-full text-left text-sm text-gray-600">
                 <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <tr>
+                        <th class="px-4 py-3 font-semibold uppercase">ID</th>
                         <th class="px-4 py-3 font-semibold uppercase">Signature Image</th>
                         <th class="px-4 py-3 font-semibold uppercase text-center">Actions</th>
                     </tr>
@@ -36,6 +39,7 @@
                 <tbody class="divide-y divide-gray-200">
                     @foreach ($signatures as $signature)
                         <tr class="hover:bg-gray-100 transition duration-200 ease-in-out">
+                            <td class="px-4 py-3">{{ $signature->id }}</td>
                             <td class="px-4 py-3">
                                 <img src="{{ asset('signatures/' . $signature->sign_image) }}"
                                     class="w-24 h-auto rounded-lg shadow-sm border border-gray-300" />
