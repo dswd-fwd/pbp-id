@@ -9,7 +9,7 @@ class Signature extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sign_image', 'created_at', 'updated_at'];
+    protected $fillable = ['type', 'sign_image'];
 
     public $timestamps = true;
 }
