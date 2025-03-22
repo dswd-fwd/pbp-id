@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SignatureController;
+use App\Livewire\SignaturePad;
 use Livewire\Volt\Volt;
 
 // Home Route (Volt component for search)
@@ -9,9 +9,9 @@ Volt::route('/', 'search')->name('home');
 Volt::route('/search', 'search')->name('search');
 
 // Signature Pad Routes
-Route::get('/signature', [SignatureController::class, 'index'])->name('signpad.index');
-Route::post('/signpad/save', [SignatureController::class, 'saveSignature'])->name('signpad.save');
-Route::delete('/signpad/{id}/delete', [SignatureController::class, 'delete'])->name('signpad.delete');
+Route::get('/signature', [SignaturePad::class, 'index'])->name('signpad.index');
+Route::post('/signpad/save', [SignaturePad::class, 'saveSignature'])->name('signpad.save');
+Route::delete('/signpad/{id}/delete', [SignaturePad::class, 'delete'])->name('signpad.delete');
 
 
 // ----- old syntax from main -----
