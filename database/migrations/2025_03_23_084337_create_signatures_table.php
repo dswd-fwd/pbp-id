@@ -20,3 +20,6 @@ return new class extends Migration
         Schema::dropIfExists('signatures');
     }
 };
+
+
+// testing syntax lang 'to for the signature
