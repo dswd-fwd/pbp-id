@@ -10,7 +10,7 @@ Volt::route('/search', 'search')->name('search');
 
 // Signature Pad Routes
 Route::get('/signature', [SignaturePad::class, 'index'])->name('signpad.index');
-Route::post('/signpad/save', [SignaturePad::class, 'saveSignature'])->name('signpad.save');
+Route::post('/signpad/save', [SignaturePad::class, 'save'])->name('signpad.save');
 Route::delete('/signpad/{id}/delete', [SignaturePad::class, 'delete'])->name('signpad.delete');
 
 
