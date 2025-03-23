@@ -22,3 +22,7 @@ return new class extends Migration
     }
 };
 
+
+/// final syntax for the signature
+
+/// dapat 1 and 2 ang ginamit instead direct word na 'respondent' and 'interviewer'
