@@ -23,7 +23,3 @@ Route::delete('/signpad/{id}/delete', [SignaturePad::class, 'delete'])->name('si
 // });
 
 // Volt::Route('search', 'search')->name('search');
-
-
-
-# kalat ng routes hahahahaha
