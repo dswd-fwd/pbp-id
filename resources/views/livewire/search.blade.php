@@ -9,6 +9,8 @@ use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Geometry\Factories\CircleFactory;
 use Intervention\Image\Geometry\Factories\RectangleFactory;
 use App\Modifiers\MaskModifier;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
@@ -24,15 +26,14 @@ new #[Title('DSWD ID Search')] #[Layout('components.layouts.app')] class extends
         // ]);
     }
 
-    // To update
+    // ID settings
     public function generateId()
     {
         if (!$this->id_pic) {
             dd('No image received!');
         }
 
-        $base64Str = preg_replace('/^data:image\/\w+;base64,/', '', $this->id_pic);
-        $imageData = base64_decode($base64Str);
+        $imageData = base64_decode(preg_replace('/^data:image\/\w+;base64,/', '', $this->id_pic));
         if (!$imageData) {
             dd('Invalid Base64 image!');
         }
@@ -40,106 +41,87 @@ new #[Title('DSWD ID Search')] #[Layout('components.layouts.app')] class extends
         $tempImagePath = storage_path('app/temp-id.png');
         file_put_contents($tempImagePath, $imageData);
 
-        $image = Image::make(public_path('img/Front-ID.png'));
+        $image = Image::make(public_path('img/pbp-id-front.png'));
 
-        $img_pic = Image::make($tempImagePath)->resize(null, 250, function ($constraint) {
-            $constraint->aspectRatio();
-        });
+        // Load and resize the uploaded image
+        $img_pic = Image::make($tempImagePath);
 
-        $img_pic = $img_pic->resizeCanvas($img_pic->width() + 15, $img_pic->height() + 15, 'center', false, '#293892');
+        // Width and height of the picture
+        $targetWidth = 275;
+        $targetHeight = 275;
 
-        $img_pic->mask(public_path('img/round.png'), true);
+        $img_pic->fit($targetWidth, $targetHeight);
+        $image->insert($img_pic, 'top-left', 86, 245); // Insert picture at coordinates (86, 245)
 
-        $image->insert($img_pic, 'center', -285, 10);
-
-        // Image dimensions
-        $imageWidth = $image->width();
-        $imageHeight = $image->height();
-        $rightMargin = 50;
-        $lineSpacing = 8;
+        // Text settings position
+        $name = 'Raniag L. Guillermo';
+        $idNumber = '0320-2025-0003';
         $fontPath = public_path('fonts/love_black.otf');
+        // $rightMargin = 550;
+        $rightMargin = strlen($name) > 24 ? 550 : 420;
+        $lineSpacing = 8;
 
-        // Example text
-        $name = 'Jose R. Park';
-        $address = 'Beneficiary';
-        $idNumber = 'ID No: 2024-00123';
+        // Define font size depends sa length sa name
+        $textDetails = [['text' => $name, 'color' => '#293892', 'size' => strlen($name) > 24 ? 20 : 32]];
 
-        $nameFontSize = 50;
-        $addressFontSize = 45;
-        $idFontSize = 32;
+        $maxTextWidth = $image->width() / 2 + 250;
 
-        // Calculate max width for text (from right edge to middle)
-        $maxTextWidth = $imageWidth / 2 + 250 - $rightMargin;
+        // Set ID number position — 20px padding below the image
+        $idNumberX = 170; // Set the X position for left alignment
+        $idNumberY = 256 + $targetHeight + 20; // Set Y position below the image
 
-        function wrapText($text, $maxWidth, $fontPath, $fontSize)
-        {
-            $words = explode(' ', $text);
-            $lines = [];
-            $currentLine = '';
+        // Draw the ID number below the image
+        $this->drawWrappedText($image, [['text' => $idNumber, 'color' => '#000000', 'size' => 22]], $idNumberX, $idNumberY, $fontPath, $maxTextWidth, $lineSpacing);
 
-            foreach ($words as $word) {
-                $testLine = $currentLine ? $currentLine . ' ' . $word : $word;
-                $box = imagettfbbox($fontSize, 0, $fontPath, $testLine);
-                $textWidth = abs($box[2] - $box[0]);
+        // Draw the name text
+        $this->drawWrappedText($image, $textDetails, $image->width() - $rightMargin, 320, $fontPath, $maxTextWidth, $lineSpacing);
 
-                if ($textWidth <= $maxWidth) {
-                    $currentLine = $testLine;
-                } else {
-                    $lines[] = $currentLine;
-                    $currentLine = $word;
-                }
-            }
-            if ($currentLine) {
-                $lines[] = $currentLine;
-            }
+        // Save the final image
+        $image->save(public_path('img-id/final-id.png'));
 
-            return $lines;
-        }
-
-        function drawWrappedText($image, $text, $xRight, $startY, $fontPath, $fontSize, $color, $maxWidth, $lineSpacing)
-        {
-            $lines = wrapText($text, $maxWidth, $fontPath, $fontSize);
-            foreach ($lines as $line) {
-                $image->text($line, $xRight, $startY, function ($font) use ($fontPath, $fontSize, $color) {
-                    $font->file($fontPath);
-                    $font->size($fontSize);
-                    $font->color($color);
-                    $font->align('right');
-                });
-                $startY += $fontSize + $lineSpacing;
-            }
-            return $startY;
-        }
-
-        // Calculate total text block height for vertical centering
-        $nameLines = wrapText($name, $maxTextWidth, $fontPath, $nameFontSize);
-        $addressLines = wrapText($address, $maxTextWidth, $fontPath, $addressFontSize);
-        $idLines = wrapText($idNumber, $maxTextWidth, $fontPath, $idFontSize);
-
-        $totalHeight = count($nameLines) * ($nameFontSize + $lineSpacing) + count($addressLines) * ($addressFontSize + $lineSpacing) + count($idLines) * ($idFontSize + $lineSpacing) + 20; // Extra spacing before ID number
-
-        // Remove extra line spacing from the last line of each block
-        $totalHeight -= $lineSpacing * 3; // Adjust for 3 text blocks
-
-        // Center vertically
-        $startY = ($imageHeight - $totalHeight) / 1.8;
-
-        // Right edge for text
-        $xRight = $imageWidth - $rightMargin;
-
-        // Draw text
-        $nextY = drawWrappedText($image, $name, $xRight, $startY, $fontPath, $nameFontSize, '#293892', $maxTextWidth, $lineSpacing);
-        $nextY = drawWrappedText($image, $address, $xRight, $nextY, $fontPath, $addressFontSize, '#000000', $maxTextWidth, $lineSpacing);
-        drawWrappedText($image, $idNumber, $xRight, $nextY + 20, $fontPath, $idFontSize, '#000000', $maxTextWidth, $lineSpacing);
-
-        $savePath = public_path('img-id/final-id.png');
-        $image->save($savePath);
-
+        // Clean up temp image
         if (file_exists($tempImagePath)) {
             unlink($tempImagePath);
         }
     }
-}; ?>
+
+    // Make drawWrappedText a private method
+    private function drawWrappedText($image, $details, $x, $y, $fontPath, $maxWidth, $lineSpacing)
+    {
+        foreach ($details as $item) {
+            $lines = $this->wrapText($item['text'], $maxWidth, $fontPath, $item['size']);
+            foreach ($lines as $line) {
+                $image->text($line, $x, $y, function ($font) use ($fontPath, $item) {
+                    $font->file($fontPath)->size($item['size'])->color($item['color'])->align('left');
+                });
+                $y += $item['size'] + $lineSpacing; // Move down for the next line
+            }
+        }
+    }
+
+    // Make wrapText a private method
+    private function wrapText($text, $maxWidth, $fontPath, $fontSize)
+    {
+        $lines = [];
+        $currentLine = '';
+        foreach (explode(' ', $text) as $word) {
+            $testLine = trim($currentLine . ' ' . $word);
+            $textWidth = abs(imagettfbbox($fontSize, 0, $fontPath, $testLine)[2]);
+            if ($textWidth <= $maxWidth) {
+                $currentLine = $testLine;
+            } else {
+                $lines[] = $currentLine;
+                $currentLine = $word;
+            }
+        }
+        if ($currentLine) {
+            $lines[] = $currentLine;
+        }
+        return $lines;
+    }
+}; 
+
+?>
 
 <div x-data="{
     container: false,
@@ -357,96 +339,72 @@ new #[Title('DSWD ID Search')] #[Layout('components.layouts.app')] class extends
                     let printWindow = window.open('', '', 'width=800,height=600');
             
                     printWindow.document.write(`
-                                    <html>
-                                    <head>
-                                        <title>Print ID</title>
-                                        <style>
-                                            @media print {
-                                                .page-break { 
-                                                    page-break-before: always; 
-                                                }
-            
-                                                /* Fix Image Size */
-                                                #id-card-front img,
-                                                #id-card-back img {
-                                                    {{-- width: auto !important; --}}
-                                                    width: 3.39in;
-                                                    height: 2.16in !important; /* h-52 */
-                                                    {{-- object-fit: contain !important; --}}
-                                                    {{-- width: 3.39in;
+                                                                                                                                                            <html>
+                                                                                                                                                            <head>
+                                                                                                                                                                <title>Print ID</title>
+                                                                                                                                                                <style>
+                                                                                                                                                                    @media print {
+                                                                                                                                                                        .page-break { 
+                                                                                                                                                                            page-break-before: always; 
+                                                                                                                                                                        }
+                                                                                                                                    
+                                                                                                                                                                        /* Fix Image Size */
+                                                                                                                                                                        #id-card-front img,
+                                                                                                                                                                        #id-card-back img {
+                                                                                                                                                                            {{-- width: auto !important; --}}
+                                                                                                                                                                            width: 3.39in;
+                                                                                                                                                                            height: 2.16in !important; /* h-52 */
+                                                                                                                                                                            {{-- object-fit: contain !important; --}}
+                                                                                                                                                                            {{-- width: 3.39in;
                                         height: 2.16in; --}}
-                                                }
-                                            }
-                                        </style>
-                                    </head>
-                                    <body>
-                                        ${printContents}
-                                        <script>
-                                            window.onload = function() {
-                                                window.print();
-                                                window.onafterprint = function() {
-                                                    window.close();
-                                                };
-                                            };
-                                        </script>
-                                    </body>
-                                    </html>
-                                `);
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                </style>
+                                                                                                                                                            </head>
+                                                                                                                                                            <body>
+                                                                                                                                                                ${printContents}
+                                                                                                                                                                <script>
+                                                                                                                                                                    window.onload = function() {
+                                                                                                                                                                        window.print();
+                                                                                                                                                                        window.onafterprint = function() {
+                                                                                                                                                                            window.close();
+                                                                                                                                                                        };
+                                                                                                                                                                    };
+                                                                                                                                                                </script>
+                                                                                                                                                            </body>
+                                                                                                                                                            </html>
+                                                                                                                                                        `);
             
                     printWindow.document.close();
                 }
             
             }">
+            
             <p class="text-center font-bold text-lg mb-4">Generated ID</p>
 
             <div class="flex justify-center flex-wrap gap-6" id="printableArea" x-ref="printableArea">
-                
-                <div class="relative">
-                    {{-- <div id="id-card-front" class="h-72 w-48 transition-transform duration-500">
-                        <img id="id-image" src="{{ asset('img-id/final-id.png') }}" class="h-full w-full object-contain" alt="Front ID">
-                    </div> --}}
 
-                    {{-- <p class="mb-4 text-center font-semibold text-neutral-800">Front ID</p> --}}
+                <div class="relative">
                     <div class="h-72 w-full" id="id-card-front">
-                        <img id="id-image"  src="{{ asset('img-id/final-id.png') }}?t={{ time() }}"
-                            class="h-full w-full object-contain" alt="">
+                        <img id="id-image" src="{{ asset('img-id/final-id.png') }}?t={{ time() }}"
+                            class="h-full w-full object-contain" alt="Front ID">
                     </div>
-        
-                    <button 
-                        id="flip-button" 
+
+                    <button id="flip-button"
                         class="absolute bottom-0 right-0 p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-700"
                         onclick="flipID()">
                         🔄
                     </button>
                 </div>
-
-                {{-- old syntax for ID display --}}
-                {{-- <div>
-                    <p class="mb-4 text-center font-semibold text-neutral-800">Front ID</p>
-                    <div class="h-72 w-full" id="id-card-front">
-                        <img src="{{ asset('img-id/final-id.png') }}?t={{ time() }}"
-                            class="h-full w-full object-contain" alt="">
-                    </div>
-                </div>
-
-                <!-- Forces next section to print on a new page -->
-                <div class="page-break"></div>
-        
-                <div>
-                    <p class="mb-4 text-center font-semibold text-neutral-800">Back ID</p>
-                    <div class="h-72 w-full" id="id-card-back">
-                        <img src="{{ asset('img/Back-ID.png') }}" class="h-full w-full object-contain" alt="">
-                    </div>
-                </div> --}}
             </div>
-            
+
             <script>
                 let isFront = true;
-        
+
                 function flipID() {
                     const idImage = document.getElementById('id-image');
                     isFront = !isFront;
-                    idImage.src = isFront ? "{{ asset('img-id/final-id.png') }}" : "{{ asset('img/Back-ID.png') }}";
+                    idImage.src = isFront ? "{{ asset('img-id/final-id.png') }}" : "{{ asset('img/pbp-id-back.png') }}";
                     idImage.alt = isFront ? "Front ID" : "Back ID";
                 }
             </script>
