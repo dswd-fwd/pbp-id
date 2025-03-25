@@ -6,7 +6,7 @@ use Livewire\Volt\Volt;
 
 // Home Route (Volt component for search)
 Volt::route('/', 'search')->name('home');
-Volt::route('/search', 'search')->name('search');
+// Volt::route('/search', 'search')->name('search');
 
 // Signature Pad Routes
 Route::get('/signature', [SignaturePad::class, 'index'])->name('signpad.index');

@@ -12,10 +12,10 @@ new class extends Component {
             {{-- <p class="text-neutral-800 text-2xl font-bold">DSWD</p> --}}
             <img src="{{ asset('img/DSWD-Logo1.png') }}" alt=""  class="max-w-16">
             <div class="space-x-2 sm:space-x-6">
-                <a href="{{ route('signpad.index') }}" class="text-neutral-600 font-semibold hover:text-neutral-700" wire:current="!font-bold !text-neutral-700">
+                {{-- <a href="{{ route('signpad.index') }}" wire:navigate class="text-neutral-600 font-semibold hover:text-neutral-700" wire:current="!font-bold !text-neutral-700">
                     Signature
-                </a>
-                <a href="{{ route('search') }}" wire:navigate class="text-neutral-600 font-semibold hover:text-neutral-700" wire:current="!font-bold !text-neutral-700">
+                </a> --}}
+                <a href="{{ route('home') }}" wire:navigate class="text-neutral-600 font-semibold hover:text-neutral-700" wire:current="!font-bold !text-neutral-700">
                     ID Generation
                 </a>
             </div>

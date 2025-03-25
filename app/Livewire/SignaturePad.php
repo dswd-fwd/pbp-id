@@ -11,12 +11,12 @@ class SignaturePad extends Component
     public function index()
     {
         $respondentSignatures = DB::connection('mysql')
-            ->table('signature')
+            ->table('signatures')
             ->where('type', 'respondent')
             ->get();
 
         $interviewerSignatures = DB::connection('mysql')
-            ->table('signature')
+            ->table('signatures')
             ->where('type', 'interviewer')
             ->get();
 
