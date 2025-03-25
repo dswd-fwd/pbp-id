@@ -29,6 +29,7 @@ class extends Component {
     public $member_name = '';
     public $member_id = '';
     public $signature;
+    public $success_img = false;
 
     public function mount()
     {
@@ -75,6 +76,7 @@ class extends Component {
 
     public function setMember($name, $id)
     {
+        $this->success_img = false;
         $this->search = '';
         $this->member_name = $name;
         $this->member_id = $id;
@@ -84,7 +86,7 @@ class extends Component {
     public function generateId()
     {
         $profileId = $this->member_id;
-        $signatureUrl = "http://dswd-pbp-v1.test/img/signature/{$profileId}.png";
+        $signatureUrl = "http://192.168.1.10:8000/img/signature/{$profileId}.png";
         $qrCodeUrl = "http://dswd-pbp-v1.test/img/qr_code/{$profileId}.png";
 
         $tempSignaturePath = storage_path("app/temp-signature-{$profileId}.png");
@@ -147,6 +149,8 @@ class extends Component {
         if ($this->qr_code && file_exists($this->qr_code)) {
             unlink($this->qr_code);
         }
+
+        $this->success_img = true;
     }
 
 
@@ -386,11 +390,11 @@ class extends Component {
     <div x-show="container"
         class="absolute inset-0 min-h-screen w-full flex z-10 bg-gray-900/50 px-10 py-5 overflow-auto" x-cloak>
         {{-- Camera --}}
-        <div x-on:click.outside="closeButtonClick; $wire.setMember('', '')"
+        <div x-on:click.outside="closeButtonClick; $wire.setMember('', '');"
             class="h-auto m-auto w-full max-w-xl shadow rounded-2xl bg-gray-100 p-5 relative" x-show="openCamera"
             x-transition >
             <div class="absolute -right-2 -top-3 shadow bg-white rounded-full h-8 w-8 grid place-content-center cursor-pointer hover:bg-gray-100"
-                x-on:click="closeButtonClick; $wire.setMember('', '')">
+                x-on:click="closeButtonClick; $wire.setMember('', '');">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
                     stroke="currentColor" class="size-6 text-red-600">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -511,30 +515,27 @@ class extends Component {
                 printWindow.document.close();
             }
         }">
-    
-    
-    
-            
             <p class="text-center font-bold text-lg mb-4">Generated ID</p>
 
             <div class="flex justify-center flex-wrap gap-6" id="printableArea" x-ref="printableArea">
 
                 <div class="relative">
                     <div class="h-72 w-full" id="id-card-front">
-                        <img 
-                            id="id-image" 
-                            src="{{ asset('img-id/final-id-front.png') }}?t={{ time() }}"
-                            class="h-full w-full object-contain" alt="Front ID"
-                        >
-                    </div>
+                        @if ($success_img)
+                            <img 
+                                id="id-image" 
+                                src="{{ asset('img-id/final-id-front.png') }}?t={{ time() }}"
+                                class="h-full w-full object-contain" alt="Front ID"
+                            >
+                            @else
+                            <img 
+                                id="id-image" 
+                                src="{{ asset('img/pbp-id-front.png') }}?t={{ time() }}"
+                                class="h-full w-full object-contain" alt="Front ID"
+                            >
+                        @endif
 
-                    {{-- <div class="h-72 w-full" id="id-card-back">
-                        <img 
-                            id="id-image" 
-                            src="{{ asset('img-id/final-id-back.png') }}?t={{ time() }}"
-                            class="h-full w-full object-contain" alt="back ID"
-                        >
-                    </div> --}}
+                    </div>
 
                     <button id="flip-button"
                         class="absolute bottom-0 right-0 p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-700"
