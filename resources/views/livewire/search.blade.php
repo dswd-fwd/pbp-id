@@ -86,8 +86,8 @@ class extends Component {
     public function generateId()
     {
         $profileId = $this->member_id;
-        $signatureUrl = "http://192.168.1.10:8000/img/signature/{$profileId}.png";
-        $qrCodeUrl = "http://dswd-pbp-v1.test/img/qr_code/{$profileId}.png";
+        $signatureUrl = "http://192.168.1.167:8000/img/signature/{$profileId}.png";
+        $qrCodeUrl = "http://192.168.1.167:8000/img/qr_code/{$profileId}.png";
 
         $tempSignaturePath = storage_path("app/temp-signature-{$profileId}.png");
         $tempQrCodePath = storage_path("app/temp-qr-{$profileId}.png");
@@ -160,26 +160,46 @@ class extends Component {
         $img_pic = Image::make($tempImagePath);
 
         // Resize uploaded image
-        $img_pic->fit(238, 238);
-        $image->insert($img_pic, 'top-left', 104, 245);
+        $img_pic->fit(250, 250);
+        $image->insert($img_pic, 'top-left', 65, 175);
 
         // Text settings
         $name = $this->member_name;
         $idNumber = $this->member_id;
         $fontPath = public_path('fonts/love_black.otf');
-        $rightMargin = strlen($name) > 24 ? 550 : 420;
+        // $rightMargin = strlen($name) > 24 ? 550 : 420;
         $lineSpacing = 8;
         $maxTextWidth = $image->width() / 2 + 250;
 
         // Draw ID number below image
-        $this->drawWrappedText($image, [['text' => $idNumber, 'color' => '#000000', 'size' => 22]], 170, 256 + 258, $fontPath, $maxTextWidth, $lineSpacing);
+        $this->drawWrappedText($image, [['text' => $idNumber, 'color' => '#000000', 'size' => 21]], 150, 206 + 258, $fontPath, $maxTextWidth, $lineSpacing);
 
         // Draw name text
-        // $this->drawWrappedText($image, [['text' => $name, 'color' => '#293892', 'size' => strlen($name) > 24 ? 20 : 32]], $image->width() - $rightMargin, 320, $fontPath, $maxTextWidth, $lineSpacing);
-        $image->text($name, 780, 310, function ($font) use ($fontPath, $name) {
-                $fontSize = strlen($name) > 25 ? 24 : 32; // Adjust size based on name length
-                $font->file($fontPath)->size($fontSize)->color('#293892')->align('center')->valign('top');
+        // $this->drawWrappedText($image, [['text' => $name, 'color' => '#293892', 'size' => strlen($name) < 30 ? 40 : 32]], $image->width() - $rightMargin, 320, $fontPath, $maxTextWidth, $lineSpacing);
+        
+        if (strlen($name) < 30) {
+            // Shorter names - larger font and adjusted position
+            $fontSize = 40;
+
+            $image->text($name, 982, 332, function ($font) use ($fontPath, $fontSize) {
+                $font->file($fontPath)->size($fontSize)->color('#FFFFFF')->align('right')->valign('top'); // White shadow
             });
+
+            $image->text($name, 980, 330, function ($font) use ($fontPath, $fontSize) {
+                $font->file($fontPath)->size($fontSize)->color('#293892')->align('right')->valign('top'); // Main text
+            });
+        } else {
+            // Longer names - smaller font and different position
+            $fontSize = 30;
+
+            $image->text($name, 982, 332, function ($font) use ($fontPath, $fontSize) {
+                $font->file($fontPath)->size($fontSize)->color('#FFFFFF')->align('right')->valign('top'); // White shadow
+            });
+
+            $image->text($name, 980, 330, function ($font) use ($fontPath, $fontSize) {
+                $font->file($fontPath)->size($fontSize)->color('#293892')->align('right')->valign('top'); // Main text
+            });
+        }
 
         // Save Front ID
         $image->save(public_path('img-id/final-id-front.png'));
@@ -561,9 +581,18 @@ class extends Component {
             </script>
 
             <button x-on:click="printDiv()"
-                class="mt-6 mx-auto flex px-8 py-3 bg-sky-600 font-semibold text-white rounded-xl hover:bg-sky-700 cursor-pointer">
+                class="mt-6 mx-auto flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-sky-500 to-blue-600 font-semibold text-white rounded-2xl shadow-md hover:scale-105 hover:shadow-lg transition-transform duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M6 9V4h12v5M6 14h12v5H6v-5zm0 5H4a2 2 0 01-2-2v-4a2 2 0 012-2h16a2 2 0 012 2v4a2 2 0 01-2 2h-2M8 4h8M8 18h8" />
+                </svg>
                 Print ID
             </button>
+
+            {{-- <button x-on:click="printDiv()"
+                class="mt-6 mx-auto flex px-8 py-3 bg-sky-600 font-semibold text-white rounded-xl hover:bg-sky-700 cursor-pointer">
+                Print ID
+            </button> --}}
         </div>
     </div>
 </div>
